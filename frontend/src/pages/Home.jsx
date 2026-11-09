@@ -1,122 +1,70 @@
-import { useEffect, useState } from 'react';
-import { analyzePrompt, comparePrompt, fetchExamples, getStatistics } from '../services/api';
-import PromptInput from '../components/PromptInput';
-import PromptScore from '../components/PromptScore';
-import ConstraintList from '../components/ConstraintList';
-import GapAnalysis from '../components/GapAnalysis';
-import PromptComparison from '../components/PromptComparison';
-import OutputComparison from '../components/OutputComparison';
+import { useEffect, useMemo, useState } from 'react';
+import { getStatistics } from '../services/api';
 import Dashboard from '../components/Dashboard';
 
-export default function Home() {
-  const [prompt, setPrompt] = useState('Write an email to my manager.');
-  const [sampleOptions, setSampleOptions] = useState([]);
-  const [selectedSample, setSelectedSample] = useState('');
-  const [analysis, setAnalysis] = useState(null);
-  const [comparison, setComparison] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+function getMostCommon(values, fallback) {
+  const counts = values.reduce((result, value) => {
+    if (value) result[value] = (result[value] || 0) + 1;
+    return result;
+  }, {});
+  return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || fallback;
+}
+
+export default function Home({ onNavigate, sessionAnalyses }) {
+  const [datasetStats, setDatasetStats] = useState(null);
 
   useEffect(() => {
-    fetchExamples().then(setSampleOptions).catch(() => setSampleOptions([]));
-    getStatistics().then(setStats).catch(() => setStats(null));
+    getStatistics().then(setDatasetStats).catch(() => setDatasetStats(null));
   }, []);
 
-  const handleAnalyze = async () => {
-    setError('');
-    setIsLoading(true);
-    try {
-      const result = await analyzePrompt(prompt);
-      setAnalysis(result);
-      setComparison(null);
-    } catch (err) {
-      setError(err.message || 'Unable to analyze the prompt.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const stats = useMemo(() => {
+    const analyses = sessionAnalyses || [];
+    const count = analyses.length;
+    const originalScore = analyses.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+    const optimizedScore = analyses.reduce((sum, item) => sum + (Number(item.optimized_score) || 0), 0);
+    const constraints = analyses.reduce(
+      (sum, item) => sum + (Array.isArray(item.detected_constraints) ? item.detected_constraints.length : 0),
+      0
+    );
+    const missingComponents = analyses.flatMap((item) =>
+      (item.gap_analysis || [])
+        .filter((gap) => gap.status === 'missing')
+        .map((gap) => gap.component)
+    );
 
-  const handleCompare = async () => {
-    setError('');
-    setIsLoading(true);
-    try {
-      const result = await comparePrompt(prompt);
-      setComparison(result);
-    } catch (err) {
-      setError(err.message || 'Unable to compare outputs.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUseSample = () => {
-    if (!selectedSample) return;
-    setPrompt(selectedSample);
-  };
+    return {
+      ...datasetStats,
+      total_prompts_analyzed: count,
+      average_original_score: count ? Math.round(originalScore / count) : 0,
+      average_optimized_score: count ? Math.round(optimizedScore / count) : 0,
+      average_improvement: count ? Math.round((optimizedScore - originalScore) / count) : 0,
+      most_common_prompt_type: getMostCommon(
+        analyses.map((item) => item.prompt_type),
+        'No analysis data available yet.'
+      ),
+      most_common_missing_component: getMostCommon(
+        missingComponents,
+        'No analysis data available yet.'
+      ),
+      total_detected_constraints: constraints,
+    };
+  }, [datasetStats, sessionAnalyses]);
 
   return (
     <div className="page-shell">
-      <header className="hero">
+      <section className="hero-panel panel">
         <div>
-          <p className="eyebrow">Prompt Identification & Optimization for Workplace Applications</p>
-          <h1>SmartPrompt</h1>
+          <p className="section-label">Workspace overview</p>
+          <h2>Welcome to SmartPrompt</h2>
+          <p className="hero-copy">
+            Make every workplace prompt clearer, smarter, and more effective.
+          </p>
         </div>
-      </header>
 
-      <PromptInput
-        value={prompt}
-        onChange={setPrompt}
-        onAnalyze={handleAnalyze}
-        onUseSample={handleUseSample}
-        sampleOptions={sampleOptions}
-        selectedSample={selectedSample}
-        setSelectedSample={setSelectedSample}
-      />
-
-      {error && <div className="error-box">{error}</div>}
-      {isLoading && <div className="loading-box">Analyzing prompt...</div>}
-
-      {analysis && (
-        <>
-          <section className="summary-grid">
-            <div className="panel summary-card">
-              <h3>Prompt Identification</h3>
-              <p><strong>Prompt Type:</strong> {analysis.prompt_type}</p>
-              <p><strong>Domain:</strong> {analysis.domain}</p>
-              <p><strong>Intent:</strong> {analysis.intent}</p>
-            </div>
-            <PromptScore title="Original Score" score={analysis.score} breakdown={analysis.score_breakdown} />
-          </section>
-
-          <ConstraintList constraints={analysis.detected_constraints} />
-          <GapAnalysis gapAnalysis={analysis.gap_analysis} />
-
-          <PromptComparison
-            originalPrompt={prompt}
-            optimizedPrompt={analysis.optimized_prompt}
-          />
-
-          <div className="panel score-improvement">
-            <h3>Score Improvement</h3>
-            <p>Original Score: {analysis.score}</p>
-            <p>Optimized Score: {analysis.optimized_score}</p>
-            <p>Improvement: +{Math.max(0, analysis.optimized_score - analysis.score)}</p>
-          </div>
-        </>
-      )}
-
-      {comparison && (
-        <OutputComparison
-          originalOutput={comparison.original_output}
-          optimizedOutput={comparison.optimized_output}
-          evaluation={comparison.evaluation}
-        />
-      )}
-
-      <div className="action-row">
-        <button className="primary" onClick={handleCompare}>Generate Output Comparison</button>
-      </div>
+        <button type="button" className="primary action-button" onClick={() => onNavigate('analyzer')}>
+          Analyze a Prompt
+        </button>
+      </section>
 
       <Dashboard statistics={stats} />
     </div>
