@@ -116,12 +116,6 @@ The project addresses these practical gaps:
 5. Lack of structured prompt refinement.
 6. Lack of integrated before/after output evaluation.
 
-## Technology Stack
-- Frontend: React, Vite, JavaScript, CSS
-- Backend: Python, FastAPI, Uvicorn, Pydantic, python-dotenv, httpx
-- Dataset: JSONL
-- LLM: OpenRouter API
-
 ## Folder Structure
 ```text
 SmartPrompt/
@@ -140,75 +134,6 @@ SmartPrompt/
 ├── README.md
 └── .venv/
 ```
-
-## Installation
-1. Clone the project.
-2. Create the Python venv and install dependencies.
-3. Install frontend dependencies using npm.
-
-## Environment Variables
-Create backend/.env with:
-```env
-OPENROUTER_API_KEY=your_key_here
-OPENROUTER_MODEL=google/gemini-2.5-flash
-```
-The real key should never be committed to git or added to the frontend.
-
-## OpenRouter Configuration
-The project uses the OpenRouter model selected via the backend environment. All AI model calls are routed through the backend service layer.
-
-## Running Backend
-```bash
-cd backend
-../.venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-## Running Frontend
-```bash
-cd frontend
-npm install
-npm run dev -- --host 0.0.0.0
-```
-
-## API Endpoints
-- POST /api/analyze
-- POST /api/generate
-- POST /api/compare
-- GET /api/examples
-- GET /api/statistics
-
-## Example Prompts
-- Write an email to my manager.
-- Write a leave request.
-- Make a report about my project.
-- Summarize this meeting.
-- Write a message to HR.
-- Create a presentation outline for my project.
-
-## Testing
-Run:
-```bash
-cd SmartPrompt/backend
-../.venv/Scripts/python -m pytest tests -q
-```
-
-## Limitations
-- The app does not train a custom model.
-- The evaluation is lightweight and explainable rather than a formal benchmark.
-- Prompt classification is rule-assisted and heuristic, not a trained ML classifier.
-- OpenRouter availability depends on the configured API key and network access.
-
-## Future Scope
-- Education-specific prompts
-- Healthcare-specific prompts
-- Finance-specific prompts
-- Customer support prompts
-- Multilingual optimization
-- Personalized prompt libraries
-- Prompt history
-- Browser extension
-- Enterprise deployment
-- Advanced human evaluation
 
 ## Final Note
 This project is designed as a practical, explainable mini-project suitable for a college prompt engineering course. It focuses on real-world workplace prompt quality improvement rather than on expensive ML model training.
