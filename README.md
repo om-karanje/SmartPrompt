@@ -33,25 +33,21 @@ SmartPrompt does not only say that a prompt is poor. It explains which key parts
 - Frontend: React + Vite
 - Backend: FastAPI + Python
 - LLM integration: OpenRouter API
-- Dataset: JSONL IFEval-inspired instruction data
+- Dataset: curated, system-ready workplace prompts in JSONL
 - Storage: local session data only for demonstration purposes
 
 ## Workflow
 1. User enters a workplace prompt.
-2. The system identifies the prompt type and workplace domain.
-3. Required constraints and instruction patterns are detected.
-4. A gap analysis shows missing components.
-5. The prompt is scored.
-6. The prompt is optimized.
-7. The optimized prompt is scored again.
-8. Original and improved prompts are sent to the LLM.
-9. Outputs are compared and evaluated.
+2. The system checks all 11 prompt components, detects explicit constraints, and scores each component's contribution to a 100-point total.
+3. The dataset retriever finds similar workplace examples and uses relevant structures as optional guidance while optimizing the prompt.
+4. The original and optimized prompts are scored and displayed side by side.
+5. On request, both prompts are sent to the configured LLM and their outputs are compared.
 
 ## Dataset Description
-The project uses the dataset in backend/data/ifeval_input_data.jsonl. It is not a workplace-specific dataset; instead, it acts as an instruction-following and constraint taxonomy layer. SmartPrompt adds workplace logic on top of it.
+SmartPrompt uses backend/data/workplace_prompt_dataset.jsonl at runtime. It contains 500 records with stable IDs, labels, 15 workplace categories, structured constraints, and source metadata. The same records power sample prompts, dataset statistics, similar-example retrieval, and optional optimization guidance. The original IFEval source file remains in the repository as provenance; it is not loaded by the application.
 
 ## Why IFEval Is Used
-IFEval provides realistic instruction-following patterns such as word counts, forbidden terms, required keywords, specific output formats, and casing requirements. These are useful for teaching prompt engineering and constraint detection.
+IFEval-derived examples provide instruction-following patterns such as word counts, forbidden terms, required keywords, specific output formats, and casing requirements. Their expected constraints are normalized into a system-friendly schema. Newly authored workplace examples broaden the dataset beyond the original general-purpose prompts.
 
 ## Important Limitation
 IFEval is not a workplace-specific dataset. It does not capture employee roles or enterprise workflows directly. SmartPrompt adapts the instruction taxonomy to workplace scenarios rather than claiming that the dataset itself is workplace-specific.
@@ -85,10 +81,13 @@ Each prompt is evaluated against key components:
 Each component is labeled as present, partial, or missing.
 
 ## Constraint Detection
-The constraint detector uses patterns derived from the IFEval-style instruction taxonomy, including word count, sentence count, required keywords, forbidden words, formatting, capitalization, language, bullet lists, title requirements, and output structure.
+The detector extracts common count, required-term, forbidden-term, formatting, language, case, and structure constraints from the user's prompt. Dataset constraints support similar-example retrieval and supply optional structural guidance; constraints from a reference example are not presented as if the user requested them.
 
 ## Prompt Optimization Methodology
-The optimizer preserves the original intent while adding missing context, audience, tone, structure, and useful placeholders. It does not invent personal data and keeps explicit user requirements intact.
+The optimizer preserves the original request verbatim, adds a structured workplace prompt template, and uses placeholders instead of inventing facts. When a sufficiently similar dataset example is found, its structure is offered as optional guidance.
+
+## Scoring
+The 0–100 score is the sum of contributions from Role, Task, Context, Objective, Audience, Tone, Output Format, Length, Constraints, Required Information, and Examples. Each contribution is weighted; present, partial, and missing components earn 100%, 50%, and 0% of their weight respectively.
 
 ## Original vs Optimized Comparison
 The application compares the original prompt with the optimized prompt and then compares the generated outputs. This helps demonstrate whether prompt refinement leads to a better response.

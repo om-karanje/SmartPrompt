@@ -70,7 +70,7 @@ export default function App() {
 
         <div className="sidebar-footer">
           <p>Dataset</p>
-          <span>IFEval-inspired workplace prompt corpus</span>
+          <span>Curated workplace prompt examples</span>
           <strong>v1.0</strong>
         </div>
       </aside>

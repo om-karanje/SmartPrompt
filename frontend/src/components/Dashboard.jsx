@@ -2,7 +2,7 @@ export default function Dashboard({ statistics }) {
   const dataset = statistics?.dataset || {};
   const total = statistics?.total_prompts_analyzed || 0;
   const totalRecords = Number(dataset.total_records || 0);
-  const constraintCategories = Array.isArray(dataset.constraint_categories) ? dataset.constraint_categories.length : 0;
+  const workplaceCategories = Array.isArray(dataset.categories) ? dataset.categories.length : 0;
 
   const cards = [
     {
@@ -85,11 +85,11 @@ export default function Dashboard({ statistics }) {
         </div>
 
         <div className="chart-row">
-          <span>Constraint categories</span>
+          <span>Workplace categories</span>
           <div className="bar">
-            <div style={{ width: `${Math.min(100, constraintCategories ? (constraintCategories / 10) * 100 : 0)}%` }} />
+            <div style={{ width: `${Math.min(100, workplaceCategories ? (workplaceCategories / 10) * 100 : 0)}%` }} />
           </div>
-          <strong>{constraintCategories}</strong>
+          <strong>{workplaceCategories}</strong>
         </div>
       </div>
     </section>

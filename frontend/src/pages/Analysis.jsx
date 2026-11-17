@@ -2,26 +2,15 @@ import { useEffect, useState } from 'react';
 import { analyzePrompt, comparePrompt, fetchExamples } from '../services/api';
 import PromptInput from '../components/PromptInput';
 import PromptScore from '../components/PromptScore';
-import ConstraintList from '../components/ConstraintList';
+import GapAnalysis from '../components/GapAnalysis';
 import PromptComparison from '../components/PromptComparison';
 import OutputComparison from '../components/OutputComparison';
 
-const defaultSampleOptions = [
-  { id: 1, label: 'Write an email to my manager.', prompt: 'Write an email to my manager.' },
-  { id: 2, label: 'Write a leave request.', prompt: 'Write a leave request.' },
-  { id: 3, label: 'Make a report about my project.', prompt: 'Make a report about my project.' },
-  { id: 4, label: 'Summarize this meeting.', prompt: 'Summarize this meeting.' },
-  { id: 5, label: 'Write a message to HR.', prompt: 'Write a message to HR.' },
-  { id: 6, label: 'Write a project update for my manager.', prompt: 'Write a project update for my manager.' },
-  { id: 7, label: 'Create a task description for a software developer.', prompt: 'Create a task description for a software developer.' },
-  { id: 8, label: 'Write a professional email to a client.', prompt: 'Write a professional email to a client.' },
-  { id: 9, label: 'Write a performance review.', prompt: 'Write a performance review.' },
-  { id: 10, label: 'Create a presentation outline for my project.', prompt: 'Create a presentation outline for my project.' },
-];
-
 export default function AnalysisPage({ onAnalysis }) {
   const [prompt, setPrompt] = useState('');
-  const [sampleOptions, setSampleOptions] = useState(defaultSampleOptions);
+  const [sampleOptions, setSampleOptions] = useState([]);
+  const [sampleError, setSampleError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSample, setSelectedSample] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [comparison, setComparison] = useState(null);
@@ -32,9 +21,19 @@ export default function AnalysisPage({ onAnalysis }) {
     fetchExamples().then((items) => {
       if (Array.isArray(items) && items.length) {
         setSampleOptions(items);
+        setSampleError('');
+      } else {
+        setSampleError('The workplace prompt dataset returned no examples.');
       }
-    }).catch(() => setSampleOptions(defaultSampleOptions));
+    }).catch((err) => {
+      setSampleError(err.message || 'Unable to load workplace dataset examples.');
+    });
   }, []);
+
+  const sampleCategories = [...new Set(sampleOptions.map((item) => item.category))].sort();
+  const visibleSamples = selectedCategory === 'all'
+    ? sampleOptions
+    : sampleOptions.filter((item) => item.category === selectedCategory);
 
   const handleAnalyze = async () => {
     if (!prompt.trim()) {
@@ -86,9 +85,13 @@ export default function AnalysisPage({ onAnalysis }) {
         onChange={setPrompt}
         onAnalyze={handleAnalyze}
         onUseSample={handleUseSample}
-        sampleOptions={sampleOptions}
+        sampleOptions={visibleSamples}
+        sampleCategories={sampleCategories}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
         selectedSample={selectedSample}
         setSelectedSample={setSelectedSample}
+        sampleError={sampleError}
       />
 
       {error && <div className="error-box">{error}</div>}
@@ -121,13 +124,29 @@ export default function AnalysisPage({ onAnalysis }) {
               </div>
               {analysis.summary && <p className="summary-copy">{analysis.summary}</p>}
             </div>
-            <PromptScore title="Original Score" score={analysis.score} breakdown={analysis.score_breakdown} />
+            <PromptScore
+              title="Original Prompt Score"
+              score={analysis.score}
+              breakdown={analysis.score_breakdown}
+              weights={analysis.score_weights}
+            />
           </section>
-          <ConstraintList constraints={analysis.detected_constraints} />
+          <GapAnalysis
+            gapAnalysis={analysis.gap_analysis}
+            contributions={analysis.score_breakdown}
+            weights={analysis.score_weights}
+          />
 
           <PromptComparison
             originalPrompt={prompt}
             optimizedPrompt={analysis.optimized_prompt}
+          />
+
+          <PromptScore
+            title="Optimized Prompt Score"
+            score={analysis.optimized_score}
+            breakdown={analysis.optimized_score_breakdown}
+            weights={analysis.optimized_score_weights}
           />
 
           <div className="panel score-improvement">
@@ -144,7 +163,10 @@ export default function AnalysisPage({ onAnalysis }) {
               </div>
               <div>
                 <span>Improvement</span>
-                <strong>+{Math.max(0, analysis.optimized_score - analysis.score)}</strong>
+                <strong>
+                  {analysis.optimized_score - analysis.score > 0 ? '+' : ''}
+                  {analysis.optimized_score - analysis.score}
+                </strong>
               </div>
             </div>
           </div>

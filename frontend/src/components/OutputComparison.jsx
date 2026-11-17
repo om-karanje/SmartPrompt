@@ -14,7 +14,7 @@ export default function OutputComparison({ originalOutput, optimizedOutput, eval
         </div>
       </div>
 
-      <h4>Output Evaluation</h4>
+      <h4>Heuristic Output Comparison</h4>
       <table>
         <thead>
           <tr>
@@ -33,7 +33,9 @@ export default function OutputComparison({ originalOutput, optimizedOutput, eval
           ))}
         </tbody>
       </table>
-      <p className="analysis-note">{evaluation?.summary || 'Automated LLM-based evaluation'}</p>
+      <p className="analysis-note">
+        {evaluation?.summary || 'Heuristic scores are indicators, not a guarantee of factual or semantic correctness.'}
+      </p>
     </section>
   );
 }

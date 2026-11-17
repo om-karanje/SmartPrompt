@@ -1,5 +1,5 @@
-export default function PromptScore({ title, score, breakdown }) {
-  const total = score || 0;
+export default function PromptScore({ title, score, breakdown, weights }) {
+  const total = score ?? 0;
 
   return (
     <section className="panel score-panel">
@@ -12,7 +12,7 @@ export default function PromptScore({ title, score, breakdown }) {
         {Object.entries(breakdown || {}).map(([label, value]) => (
           <div key={label} className="score-row">
             <span>{label}</span>
-            <strong>{value}</strong>
+            <strong>{value} / {weights?.[label] ?? value}</strong>
           </div>
         ))}
       </div>

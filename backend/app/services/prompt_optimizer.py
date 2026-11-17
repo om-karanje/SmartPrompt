@@ -1,137 +1,126 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Any, Dict, List, Optional, Sequence
 
-PLACEHOLDERS = {
-    "manager": "[Manager Name]",
-    "date": "[Date]",
-    "project": "[Project Name]",
-    "reason": "[Reason]",
-    "days": "[Number of Days]",
-    "recipient": "[Recipient Name]",
-    "deadline": "[Deadline]",
-    "context": "[Additional Context]",
+
+FORMAT_LABELS = {
+    "approval_request": "approval request",
+    "campaign_brief": "campaign brief",
+    "checklist": "checklist",
+    "closeout_report": "project closeout report",
+    "decision_log_entry": "decision log entry",
+    "decision_request": "decision request",
+    "email": "email",
+    "handoff": "handoff note",
+    "meeting_summary": "meeting summary",
+    "message": "workplace message",
+    "performance_review": "performance review",
+    "requirements_summary": "requirements summary",
+    "scorecard": "scorecard",
+    "status_update": "status update",
+    "summary": "summary",
+    "task_brief": "task brief",
+    "triage_report": "triage report",
 }
 
 
-def optimize_prompt(prompt: str, prompt_type: str) -> str:
-    lower = prompt.lower()
+def _example_hint(dataset_matches: Sequence[Dict[str, Any]]) -> str:
+    if not dataset_matches or dataset_matches[0].get("similarity", 0) < 0.12:
+        return ""
 
-    if "email" in lower or "message" in lower:
-        body = (
-            "Act as a professional workplace communication assistant.\n\n"
-            "Write a concise and professional email to [Manager Name] or [Recipient Name] regarding [Purpose/Topic].\n\n"
-            "Context:\n"
-            "- Background: [Additional Context]\n"
-            "- Relevant details: [Project/Issue/Reason]\n"
-            "- Date: [Date]\n"
-            "- Deadline or follow-up: [Deadline]\n\n"
-            "Requirements:\n"
-            "- Use a professional and respectful tone.\n"
-            "- Clearly state the purpose of the email.\n"
-            "- Include all key facts and dates.\n"
-            "- Keep the message concise and easy to read.\n"
-            "- End with a professional closing.\n\n"
-            "Return only the email."
-        )
-        return body
+    match = dataset_matches[0]
+    formats: List[str] = []
+    sections: List[str] = []
+    for constraint in match.get("constraints", []):
+        constraint_type = constraint.get("type")
+        value = constraint.get("value")
+        if constraint_type in {"required_fields", "required_sections", "required_topics"}:
+            if isinstance(value, list):
+                sections.extend(str(item) for item in value)
+        elif constraint_type == "format" and isinstance(value, str):
+            formats.append(FORMAT_LABELS.get(value, value.replace("_", " ")))
 
-    if "leave" in lower or "vacation" in lower or "pto" in lower:
+    guidance: List[str] = []
+    if formats:
+        guidance.append(f"the {formats[0]} format")
+    if sections:
+        guidance.append(f"sections such as {', '.join(list(dict.fromkeys(sections))[:5])}")
+    if not guidance:
         return (
-            "Act as a professional workplace assistant.\n\n"
-            "Draft a formal leave request email to [Manager Name].\n\n"
-            "Include the following details:\n"
-            "- Leave dates: [Start Date] to [End Date]\n"
-            "- Reason: [Reason]\n"
-            "- Number of days: [Number of Days]\n"
-            "- Work coverage or handover plan: [Handover Details]\n"
-            "- Department or team: [Department/Team]\n\n"
-            "Requirements:\n"
-            "- Use a respectful and professional tone.\n"
-            "- Keep the request clear and brief.\n"
-            "- Mention the purpose and dates clearly.\n"
-            "- End with a polite closing.\n\n"
-            "Return only the leave request."
-        )
-
-    if "project" in lower and ("report" in lower or "update" in lower or "summary" in lower):
-        return (
-            "Act as a professional workplace analyst.\n\n"
-            "Write a clear project update or project report for [Manager Name].\n\n"
-            "Context:\n"
-            "- Project: [Project Name]\n"
-            "- Current status: [Status]\n"
-            "- Completed work: [Completed Work]\n"
-            "- Pending work: [Pending Work]\n"
-            "- Blockers: [Blockers]\n"
-            "- Deadline: [Deadline]\n\n"
-            "Requirements:\n"
-            "- Use a professional and concise tone.\n"
-            "- Summarize progress, risks, and next steps clearly.\n"
-            "- Include a short status overview and action items.\n"
-            "- Keep the output structured and easy to scan.\n\n"
-            "Return only the project update."
-        )
-
-    if "meeting" in lower and ("summary" in lower or "minutes" in lower):
-        return (
-            "Act as a professional meeting coordinator.\n\n"
-            "Summarize the meeting for [Team/Department].\n\n"
-            "Context:\n"
-            "- Meeting topic: [Topic]\n"
-            "- Date: [Date]\n"
-            "- Attendees: [Names/Teams]\n"
-            "- Key decisions: [Decisions]\n"
-            "- Action items: [Action Items]\n\n"
-            "Requirements:\n"
-            "- Use a concise business tone.\n"
-            "- Include decisions, next steps, and owners.\n"
-            "- Keep the summary structured with headings if helpful.\n\n"
-            "Return only the meeting summary."
-        )
-
-    if "hr" in lower or "human resources" in lower:
-        return (
-            "Act as a professional HR communication assistant.\n\n"
-            "Write a respectful HR communication regarding [Topic].\n\n"
-            "Context:\n"
-            "- Employee or sender: [Name/Role]\n"
-            "- Recipient: [HR Team/Manager]\n"
-            "- Relevant issue or request: [Issue/Request]\n"
-            "- Supporting details: [Date/Department/Policy context]\n\n"
-            "Requirements:\n"
-            "- Use a respectful and professional tone.\n"
-            "- State the purpose clearly.\n"
-            "- Include all required facts and context.\n"
-            "- Keep the message concise and formal.\n\n"
-            "Return only the HR communication."
-        )
-
-    if "resume" in lower or "cv" in lower or "cover letter" in lower:
-        return (
-            "Act as a professional career advisor.\n\n"
-            "Write a polished professional resume or career document for [Candidate Name].\n\n"
-            "Context:\n"
-            "- Role target: [Job Title/Industry]\n"
-            "- Education: [Education Details]\n"
-            "- Experience: [Experience Summary]\n"
-            "- Skills: [Skills]\n"
-            "- Achievements: [Achievements]\n\n"
-            "Requirements:\n"
-            "- Use a professional and clear tone.\n"
-            "- Highlight relevant qualifications and experience.\n"
-            "- Keep the output easy to scan and well-structured.\n\n"
-            "Return only the resume content."
+            f"Optional reference: a similar workplace example is "
+            f"'{match['label']}' in the {match['category'].replace('_', ' ')} category. "
+            "Use its structure only when it fits the original request."
         )
 
     return (
-        "Act as an expert workplace prompt engineer.\n\n"
-        f"Improve the following workplace request while preserving its original intent:\n\n{prompt}\n\n"
-        "Requirements:\n"
-        "- Add missing audience and context where needed.\n"
-        "- Use placeholders for unknown user-specific details such as [Manager Name], [Date], [Project Name], or [Reason].\n"
-        "- Make the task clear, specific, and professional.\n"
-        "- Add a useful output format when helpful.\n"
-        "- Preserve the user's original intent without inventing personal facts.\n\n"
-        "Return only the improved prompt."
+        f"Optional reference from the similar dataset example '{match['label']}': "
+        f"consider {' and '.join(guidance)} only when they fit the original request."
     )
+
+
+def optimize_prompt(
+    prompt: str,
+    prompt_type: str,
+    *,
+    gap_analysis: Optional[List[Dict[str, str]]] = None,
+    detected_constraints: Optional[List[Dict[str, Any]]] = None,
+    dataset_matches: Optional[Sequence[Dict[str, Any]]] = None,
+) -> str:
+    statuses = {
+        item["component"]: item["status"]
+        for item in gap_analysis or []
+    }
+    constraints = detected_constraints or []
+    matches = dataset_matches or []
+    example_hint = _example_hint(matches)
+    best_match = matches[0] if matches and matches[0].get("similarity", 0) >= 0.12 else None
+
+    tone = "the tone specified in the request"
+    if statuses.get("Tone") in {None, "missing"}:
+        tone = "a professional and respectful tone"
+        if best_match:
+            matched_tones = [
+                constraint.get("value")
+                for constraint in best_match.get("constraints", [])
+                if constraint.get("type") == "tone"
+                and isinstance(constraint.get("value"), str)
+            ]
+            if matched_tones:
+                tone = f"a {matched_tones[0].replace('_', ' ')} tone"
+
+    output_format = "the output format specified in the request"
+    if statuses.get("Output Format") in {None, "missing"}:
+        output_format = f"a clear format suitable for a {prompt_type.lower()}"
+
+    constraint_lines = [
+        f"- {item['label']}: {item['detail']}"
+        for item in constraints
+        if item.get("status") == "present"
+        and item.get("label") != "No explicit constraints detected"
+    ]
+    if not constraint_lines:
+        constraint_lines = [
+            "- Preserve every explicit instruction in the original request.",
+            "- Do not invent personal, project, date, or business facts.",
+        ]
+
+    sections = [
+        "Act as a professional workplace assistant.",
+        f"Request type: {prompt_type}.",
+        "Task and original request (preserve its intent and explicit requirements):",
+        prompt.strip(),
+        "Objective: Complete the original request clearly and accurately.",
+        "Context: Use facts from the original request; mark missing context as [Additional Context] instead of guessing.",
+        "Audience: Address [Intended Audience] unless the original request specifies one.",
+        f"Tone: Use {tone}.",
+        f"Output format: Use {output_format}.",
+        "Length: Follow the requested length, or use [Target Length] if none was specified.",
+        "Constraints:",
+        *constraint_lines,
+        "Required information: Include relevant facts and supplied names, dates, decisions, or next steps; use placeholders for missing details.",
+        "Example: Follow any reference example in the original request; otherwise use [Reference Example] only if one is needed.",
+    ]
+    if example_hint:
+        sections.extend(["Dataset guidance:", example_hint])
+    sections.append("Return only the requested workplace content.")
+    return "\n\n".join(sections)

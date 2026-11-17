@@ -4,8 +4,12 @@ export default function PromptInput({
   onAnalyze,
   onUseSample,
   sampleOptions,
+  sampleCategories,
+  selectedCategory,
+  setSelectedCategory,
   selectedSample,
   setSelectedSample,
+  sampleError,
 }) {
   const samples = sampleOptions?.length ? sampleOptions : [];
 
@@ -34,14 +38,29 @@ export default function PromptInput({
 
       <div className="sample-toolbar">
         <select
+          value={selectedCategory}
+          onChange={(event) => {
+            setSelectedCategory(event.target.value);
+            setSelectedSample('');
+          }}
+          aria-label="Filter sample prompts by category"
+        >
+          <option value="all">All dataset categories</option>
+          {sampleCategories.map((category) => (
+            <option key={category} value={category}>
+              {category.replaceAll('_', ' ')}
+            </option>
+          ))}
+        </select>
+        <select
           value={selectedSample}
           onChange={(event) => setSelectedSample(event.target.value)}
           aria-label="Choose a sample prompt"
         >
-          <option value="">Choose a sample prompt</option>
+          <option value="">Choose a dataset prompt</option>
           {samples.map((sample) => (
             <option key={sample.id || sample.prompt} value={sample.prompt}>
-              {sample.label}
+              {sample.label} ({sample.category.replaceAll('_', ' ')})
             </option>
           ))}
         </select>
@@ -58,6 +77,7 @@ export default function PromptInput({
         </button>
         <button type="button" className="primary primary-cta" onClick={onAnalyze}>Analyze Prompt</button>
       </div>
+      {sampleError && <p className="inline-error">{sampleError}</p>}
     </section>
   );
 }

@@ -4,23 +4,25 @@ import re
 from typing import Any, Dict
 
 
-def _score_field(text: str) -> int:
-    words = re.findall(r"\b\w+\b", text)
-    return max(1, min(100, len(words) // 2))
-
-
 def evaluate_outputs(original_output: str, optimized_output: str, original_prompt: str) -> Dict[str, Any]:
     original_words = len(re.findall(r"\b\w+\b", original_output or ""))
     optimized_words = len(re.findall(r"\b\w+\b", optimized_output or ""))
+    prompt_terms = set(re.findall(r"\b[a-z0-9]{3,}\b", original_prompt.casefold()))
+    prompt_terms.difference_update({"about", "after", "before", "from", "into", "that", "then", "this", "with", "write"})
 
-    def evaluate(text: str, label: str) -> Dict[str, int]:
+    def evaluate(text: str) -> Dict[str, int]:
         word_count = len(re.findall(r"\b\w+\b", text or ""))
+        output_terms = set(re.findall(r"\b[a-z0-9]{3,}\b", text.casefold()))
         structure_bonus = 15 if any(marker in text for marker in ["- ", "1.", "2.", "***", "Dear", "Subject", "Summary"]) else 0
         specificity_bonus = 15 if word_count > 60 else 5
-        relevance_bonus = 15 if any(term in text.lower() for term in ["project", "manager", "team", "deadline", "report", "email", "summary"]) else 5
         tone_bonus = 15 if any(term in text.lower() for term in ["professional", "respectfully", "please", "regards", "sincerely", "concise"]) else 5
+        relevance = (
+            50
+            if not prompt_terms
+            else 35 + round(65 * len(prompt_terms & output_terms) / len(prompt_terms))
+        )
         return {
-            "Relevance": max(30, min(100, 45 + relevance_bonus + (10 if word_count > 40 else 0))),
+            "Relevance": max(30, min(100, relevance)),
             "Completeness": max(30, min(100, 40 + specificity_bonus + structure_bonus)),
             "Structure": max(35, min(100, 35 + structure_bonus + (5 if word_count > 30 else 0))),
             "Specificity": max(30, min(100, 40 + specificity_bonus + (10 if any(ch.isdigit() for ch in text) else 0))),
@@ -28,14 +30,34 @@ def evaluate_outputs(original_output: str, optimized_output: str, original_promp
             "Professional Tone": max(30, min(100, 40 + tone_bonus + (10 if word_count > 30 else 0))),
         }
 
-    original_scores = evaluate(original_output, "Original")
-    optimized_scores = evaluate(optimized_output, "Optimized")
-
-    summary = (
-        "The optimized output is typically clearer, more structured, and more specific because it follows the improved prompt and adds relevant workplace context."
-        if optimized_words >= original_words
-        else "The optimized output is comparable in length but may benefit from more explicit context or structure."
+    original_scores = evaluate(original_output)
+    optimized_scores = evaluate(optimized_output)
+    improved_dimensions = sum(
+        optimized_scores[key] > original_scores[key]
+        for key in original_scores
     )
+    declined_dimensions = sum(
+        optimized_scores[key] < original_scores[key]
+        for key in original_scores
+    )
+
+    if improved_dimensions > declined_dimensions:
+        summary = (
+            f"The optimized output scored higher in {improved_dimensions} of "
+            f"{len(original_scores)} heuristic dimensions. Review it for factual accuracy "
+            "and instruction compliance before use."
+        )
+    elif declined_dimensions > improved_dimensions:
+        summary = (
+            f"The original output scored higher in {declined_dimensions} of "
+            f"{len(original_scores)} heuristic dimensions. Review both responses against "
+            "the original request."
+        )
+    else:
+        summary = (
+            "The outputs received similar heuristic scores. Review both responses for "
+            "factual accuracy and instruction compliance."
+        )
 
     return {
         "scores": {

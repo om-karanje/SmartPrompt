@@ -4,10 +4,10 @@ const statusIcon = {
   missing: '✗',
 };
 
-export default function GapAnalysis({ gapAnalysis = [] }) {
+export default function GapAnalysis({ gapAnalysis = [], contributions = {}, weights = {} }) {
   return (
     <section className="panel">
-      <h3>Domain-Aware Gap Analysis</h3>
+      <h3>11-Component Prompt Analysis</h3>
       <div className="gap-grid">
         {gapAnalysis.map((item) => (
           <div key={item.component} className="gap-item">
@@ -15,6 +15,9 @@ export default function GapAnalysis({ gapAnalysis = [] }) {
             <div>
               <strong>{item.component}</strong>
               <p>{item.explanation}</p>
+              <span className="component-contribution">
+                Score contribution: {contributions[item.component] ?? 0} / {weights[item.component] ?? 0}
+              </span>
             </div>
           </div>
         ))}

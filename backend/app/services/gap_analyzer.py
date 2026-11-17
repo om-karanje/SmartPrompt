@@ -28,7 +28,10 @@ def analyze_gap(prompt: str) -> List[Dict[str, str]]:
         bool(re.search(r"\b(email|report|summary|json|markdown|bullet|table|paragraph|poem|essay|title|outline)\b", lower)),
         bool(re.search(r"\b(format|structure|style)\b", lower)),
     )
-    length = status_for(bool(re.search(r"\b(\d+\s+words?|\d+\s+sentences?|\d+\s+paragraphs?|\d+\s+bullet points?)\b", lower)))
+    length = status_for(
+        bool(re.search(r"\b(\d+\s+words?|\d+\s+sentences?|\d+\s+paragraphs?|\d+\s+bullet points?)\b", lower)),
+        bool(re.search(r"\b(?:target|desired|maximum|minimum)\s+(?:word count|sentence count|length)\b", lower)),
+    )
     constraints = status_for(bool(re.search(r"\b(must|should|do not|don't|avoid|without|at least|exactly|less than|more than|only|no\s+[a-z]+)\b", lower)))
     required_information = status_for(
         bool(re.search(r"\b(include|mention|provide|list|state|detail|specific|key facts|deadline|dates?|reason|project name|manager name)\b", lower)),
